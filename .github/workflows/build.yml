@@ -38,7 +38,9 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          # 与本地开发环境保持一致（本机 pnpm 11.6.0，lockfileVersion 9.0）。
+          # 曾固定为 9，与本地版本错配易引发 lockfile / 依赖解析差异。
+          version: 11
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
