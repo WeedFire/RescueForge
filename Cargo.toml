@@ -1,0 +1,60 @@
+[workspace]
+members = [
+    "src-tauri",
+    "rescueforge-core",
+    "disk-scanner",
+]
+resolver = "2"
+
+# 应用版本以 src-ui/package.json 的 version 为唯一来源：
+# - tauri.conf.json 用 "../src-ui/package.json" 引用（打包版本）
+# - 前端用 vite define 注入 __APP_VERSION__（dev 回退） + getVersion()（运行时）
+# 这里的 workspace version 仅是 Rust crate 元数据版本，与打包版本解耦，
+# 发布新版本时同步更新即可（不影响产物版本号）。
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["RescueForge Team"]
+license = "MIT"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+log = "0.4"
+
+# Tauri
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+
+# Async
+tokio = { version = "1", features = ["full"] }
+
+# Parallel
+rayon = "1"
+
+# Database
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# File system walking
+walkdir = "2"
+
+# Windows
+[workspace.dependencies.windows]
+version = "0.58"
+features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+    "Win32_UI_Shell",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+]
+
+# Unix
+[workspace.dependencies.nix]
+version = "0.29"
+features = ["user", "fs"]

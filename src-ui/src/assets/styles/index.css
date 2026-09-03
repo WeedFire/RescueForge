@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 主题变量（RGB 三元组，配合 tailwind 透明度修饰符） ===== */
+/* 护眼色（默认）：柔和豆绿系，低饱和、低蓝光 */
+:root,
+[data-theme='eye'] {
+  --app-bg: 234 242 227;         /* #EAF2E3 */
+  --app-sidebar: 220 233 210;    /* #DCE9D2 */
+  --app-card: 244 248 239;       /* #F4F8EF */
+  --app-card-hover: 233 241 224; /* #E9F1E0 */
+  --app-input: 226 236 215;      /* #E2ECD7 */
+  --app-border: 195 212 180;     /* #C3D4B4 */
+  --app-border-light: 169 192 150; /* #A9C096 */
+  --t-primary: 44 58 43;         /* #2C3A2B */
+  --t-secondary: 86 106 82;      /* #566A52 */
+  --t-muted: 135 153 127;        /* #87997F */
+  --scroll-thumb: 169 192 150;
+  --scroll-thumb-hover: 142 168 118;
+}
+
+/* 深色（专业恢复工具风） */
+[data-theme='dark'] {
+  --app-bg: 13 17 23;            /* #0D1117 */
+  --app-sidebar: 17 24 32;       /* #111820 */
+  --app-card: 22 28 36;          /* #161C24 */
+  --app-card-hover: 27 35 48;    /* #1B2330 */
+  --app-input: 15 20 26;         /* #0F141A */
+  --app-border: 30 41 59;        /* #1E293B */
+  --app-border-light: 42 53 72;  /* #2A3548 */
+  --t-primary: 230 237 245;      /* #E6EDF5 */
+  --t-secondary: 139 155 180;    /* #8B9BB4 */
+  --t-muted: 84 99 122;          /* #54637A */
+  --scroll-thumb: 42 53 72;
+  --scroll-thumb-hover: 58 74 96;
+}
+
+/* 浅色（清爽灰白） */
+[data-theme='light'] {
+  --app-bg: 245 247 250;         /* #F5F7FA */
+  --app-sidebar: 237 241 245;    /* #EDF1F5 */
+  --app-card: 255 255 255;       /* #FFFFFF */
+  --app-card-hover: 244 247 251; /* #F4F7FB */
+  --app-input: 240 243 247;      /* #F0F3F7 */
+  --app-border: 221 227 234;     /* #DDE3EA */
+  --app-border-light: 199 208 219; /* #C7D0DB */
+  --t-primary: 31 41 55;         /* #1F2937 */
+  --t-secondary: 91 102 117;     /* #5B6675 */
+  --t-muted: 148 160 176;        /* #94A0B0 */
+  --scroll-thumb: 199 208 219;
+  --scroll-thumb-hover: 170 182 196;
+}
+
+@layer base {
+  * { @apply border-app-border; }
+  body { @apply bg-app-bg text-t-primary antialiased; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--scroll-thumb)); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--scroll-thumb-hover)); }
+
+  ::selection { background-color: rgb(59 130 246 / 0.25); @apply text-t-primary; }
+}
+
+@layer components {
+  /* Card */
+  .card {
+    @apply bg-app-card border border-app-border rounded-lg;
+  }
+
+  .card-interactive {
+    @apply card transition-all duration-200 cursor-pointer;
+  }
+  .card-interactive:hover {
+    @apply bg-app-card-hover border-app-border-light shadow-card-hover;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-md text-sm font-medium
+           transition-all duration-150 select-none
+           focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-app-bg
+           disabled:opacity-40 disabled:pointer-events-none;
+    --tw-ring-color: rgb(59 130 246 / 0.50);
+  }
+  .btn-sm { @apply px-2.5 py-1.5 text-xs rounded; }
+
+  .btn-primary {
+    @apply btn bg-brand-blue text-white hover:brightness-110 active:brightness-95;
+  }
+  .btn-primary-sm { @apply btn-sm bg-brand-blue text-white hover:brightness-110; }
+
+  .btn-secondary {
+    @apply btn bg-app-input text-t-secondary border border-app-border
+           hover:text-t-primary hover:border-app-border-light active:bg-app-card;
+  }
+  .btn-secondary-sm { @apply btn-sm bg-app-input text-t-secondary border border-app-border hover:text-t-primary; }
+
+  .btn-ghost {
+    @apply btn text-t-secondary hover:text-t-primary hover:bg-app-card active:bg-app-card-hover;
+  }
+  .btn-ghost-sm { @apply btn-sm text-t-secondary hover:text-t-primary hover:bg-app-card; }
+
+  .btn-danger {
+    @apply btn text-brand-red;
+    background-color: rgb(239 68 68 / 0.12);
+    border-color: rgb(239 68 68 / 0.20);
+  }
+  .btn-danger:hover { background-color: rgb(239 68 68 / 0.20); }
+  .btn-danger:active { background-color: rgb(239 68 68 / 0.25); }
+
+  /* Input */
+  .input {
+    @apply w-full bg-app-input border border-app-border rounded-md px-3 py-2 text-sm text-t-primary
+           placeholder:text-t-muted
+           focus:outline-none focus:border-brand-blue focus:ring-1
+           transition-colors duration-150;
+  }
+  .input:focus { --tw-ring-color: rgb(59 130 246 / 0.25); }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-3xs font-semibold uppercase tracking-wider;
+  }
+  .badge-green { @apply badge text-brand-green; background-color: rgb(34 197 94 / 0.12); }
+  .badge-amber { @apply badge text-brand-amber; background-color: rgb(245 158 11 / 0.12); }
+  .badge-red { @apply badge text-brand-red; background-color: rgb(239 68 68 / 0.12); }
+  .badge-blue { @apply badge text-brand-blue; background-color: rgb(59 130 246 / 0.12); }
+  .badge-purple { @apply badge text-brand-purple; background-color: rgb(139 92 246 / 0.12); }
+
+  /* Dividers */
+  .divider { @apply border-t border-app-border; }
+
+  /* Progress bar */
+  .progress-track {
+    @apply h-1.5 rounded-full bg-app-input overflow-hidden;
+  }
+  .progress-fill {
+    @apply h-full rounded-full transition-all duration-500 ease-out;
+  }
+  .progress-fill-blue { @apply progress-fill bg-brand-blue; }
+  .progress-fill-green { @apply progress-fill bg-brand-green; }
+
+  /* Ring chart mini */
+  .ring-chart {
+    @apply relative inline-flex items-center justify-center;
+  }
+}
+
+@layer utilities {
+  .text-gradient-blue {
+    @apply bg-gradient-to-r from-brand-blue to-brand-cyan bg-clip-text text-transparent;
+  }
+}

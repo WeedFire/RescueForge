@@ -1,0 +1,27 @@
+[package]
+name = "disk_scanner"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "disk_scanner"
+path = "src/main.rs"
+
+[dependencies]
+rescueforge-core = { path = "../rescueforge-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+log = { workspace = true }
+rayon = { workspace = true }
+sha2 = "0.10"
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true }

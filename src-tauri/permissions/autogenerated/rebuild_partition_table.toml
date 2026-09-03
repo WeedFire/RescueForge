@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-rebuild-partition-table"
+description = "Enables the rebuild_partition_table command without any pre-configured scope."
+commands.allow = ["rebuild_partition_table"]
+
+[[permission]]
+identifier = "deny-rebuild-partition-table"
+description = "Denies the rebuild_partition_table command without any pre-configured scope."
+commands.deny = ["rebuild_partition_table"]

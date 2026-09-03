@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-get-disks"
+description = "Enables the get_disks command without any pre-configured scope."
+commands.allow = ["get_disks"]
+
+[[permission]]
+identifier = "deny-get-disks"
+description = "Denies the get_disks command without any pre-configured scope."
+commands.deny = ["get_disks"]

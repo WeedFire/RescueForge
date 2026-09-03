@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-recover-files"
+description = "Enables the recover_files command without any pre-configured scope."
+commands.allow = ["recover_files"]
+
+[[permission]]
+identifier = "deny-recover-files"
+description = "Denies the recover_files command without any pre-configured scope."
+commands.deny = ["recover_files"]

@@ -1,0 +1,36 @@
+fn main() {
+    tauri_build::try_build(
+        tauri_build::Attributes::new().app_manifest(
+            tauri_build::AppManifest::new().commands(&[
+                "select_folder",
+                "validate_path",
+                "reveal_in_explorer",
+                "start_path_scan",
+                "start_scan",
+                "pause_scan",
+                "resume_scan",
+                "cancel_scan",
+                "recover_files",
+                "preview_file",
+                "get_file_info",
+                "get_scan_results",
+                "get_app_log",
+                "write_app_log",
+                "get_autotest_flag",
+                "get_disks",
+                "get_smart_status",
+                "search_lost_partitions",
+                "rebuild_partition_table",
+                "backup_boot_sector",
+                "restore_boot_sector",
+                "create_disk_image",
+                "cancel_disk_image",
+                "get_privilege_status",
+                "restart_elevated",
+                "get_settings",
+                "update_settings",
+            ]),
+        ),
+    )
+    .expect("tauri build failed");
+}

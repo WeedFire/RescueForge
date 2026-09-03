@@ -1,0 +1,119 @@
+name: Release
+
+# 触发方式：
+# 1) 推送 v* 标签（如 v0.1.0）→ 构建并发布正式 Release
+# 2) 手动触发（workflow_dispatch）→ 构建产物但不发布，用于验证打包
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ''
+          - platform: ubuntu-22.04
+            args: ''
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      # 图标是打包必需资产。仓库需纳入 src-tauri/icons/**（.gitignore 已放开）。
+      # 若缺失则用纯色占位图兜底，避免整个 Release 流程失败；
+      # 正式发布前请提交真实图标：pnpm tauri icon <源图.png>
+      - name: Ensure icons exist (fallback placeholder)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import zlib, struct, os
+          d = 'src-tauri/icons'
+          os.makedirs(d, exist_ok=True)
+
+          def png_bytes(size, rgb=(59, 130, 246)):
+              row = b'\x00' + bytes(rgb) * size
+              raw = row * size
+              def chunk(t, data):
+                  return (struct.pack('>I', len(data)) + t + data
+                          + struct.pack('>I', zlib.crc32(t + data) & 0xffffffff))
+              ihdr = struct.pack('>IIBBBBB', size, size, 8, 2, 0, 0, 0)
+              return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr)
+                      + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b''))
+
+          targets = {'32x32.png': 32, '128x128.png': 128, '128x128@2x.png': 256}
+          missing = [n for n in targets if not os.path.exists(os.path.join(d, n))]
+          for n, s in targets.items():
+              p = os.path.join(d, n)
+              if not os.path.exists(p):
+                  with open(p, 'wb') as f:
+                      f.write(png_bytes(s))
+
+          # macOS 打包需要 icon.icns；缺失时用 256x256 PNG 包一层 icns 容器兜底
+          icns = os.path.join(d, 'icon.icns')
+          if not os.path.exists(icns):
+              png256 = png_bytes(256)
+              # ic08 = 256x256 PNG 条目
+              entry = b'ic08' + struct.pack('>I', len(png256) + 8) + png256
+              with open(icns, 'wb') as f:
+                  f.write(b'icns' + struct.pack('>I', 8 + len(entry)) + entry)
+              missing.append('icon.icns')
+
+          if missing:
+              print('::warning::缺少图标 ' + ', '.join(missing)
+                    + '，已用占位图兜底。正式发布前请提交真实图标：pnpm tauri icon <源图.png>')
+          PY
+
+      - name: Install frontend dependencies
+        run: pnpm install --prefix src-ui
+
+      - name: Build and release (Tauri)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 自动更新签名密钥（Release 构建必需）
+          # 生成方式：npx tauri signer generate -- -w ~/.tauri/rescueforge.key
+          # 私钥 base64 存为 TAURI_SIGNING_PRIVATE_KEY，密码存 TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'RescueForge v__VERSION__'
+          releaseBody: '自动构建发布。更新内容见提交记录。'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

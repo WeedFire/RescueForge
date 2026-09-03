@@ -1,0 +1,77 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nickkuk/nickkuk.github.io/main/tauri-conf.schema.json",
+  "productName": "RescueForge",
+  "version": "../src-ui/package.json",
+  "identifier": "com.rescueforge.app",
+  "build": {
+    "beforeDevCommand": "pnpm --prefix ../src-ui run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm --prefix ../src-ui run build",
+    "frontendDist": "../src-ui/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "RescueForge - 数据恢复工具",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "decorations": true,
+        "transparent": false,
+        "dataDirectory": "webview-data"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
+    },
+    "trayIcon": {
+      "iconPath": "icons/32x32.png",
+      "iconAsTemplate": true,
+      "tooltip": "RescueForge"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": [],
+    "category": "Utility",
+    "shortDescription": "轻量跨平台数据恢复工具",
+    "longDescription": "RescueForge 是一款轻量跨平台数据恢复软件，支持快速恢复误删文件、深度扫描格式化磁盘、RAW 文件雕刻与分区修复。",
+    "copyright": "Copyright © 2024 RescueForge",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["English", "SimpChinese"]
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/WeedFire/RescueForge/releases/latest/download/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVENTBFQUY3MTIxNzczMEYKUldRUGN4Y1M5K3BRN1pEdzhldlNVUGkwWFhwRWkvY2pyTUN4SVQ0WkNsV1JEcWxOMFAyaURsdHYK"
+    }
+  }
+}
