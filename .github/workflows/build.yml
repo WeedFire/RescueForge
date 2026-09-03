@@ -1,13 +1,15 @@
-name: Release
+name: Build & Release
 
-# 触发方式：
-# 1) 推送 v* 标签（如 v0.1.0）→ 构建并发布正式 Release
-# 2) 手动触发（workflow_dispatch）→ 构建产物但不发布，用于验证打包
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+    branches: [master, main]
+    tags: ['v*']
+  pull_request:
+    branches: [master, main]
+
+permissions:
+  contents: write
+
 
 jobs:
   build:
