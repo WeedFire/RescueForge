@@ -6,8 +6,8 @@ name: Build & Release (Windows)
 # 注意：不再对 push/PR 触发，避免每次提交都产生 draft release。
 on:
   push:
+    branches: [master, main]
     tags: ['v*']
-  workflow_dispatch:
 
 permissions:
   contents: write
