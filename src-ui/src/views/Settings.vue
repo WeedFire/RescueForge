@@ -75,8 +75,13 @@ async function checkUpdate() {
     updateMessage.value = `发现新版本 ${update.version}`
   } catch (e) {
     updateState.value = 'error'
-    // 常见于未配置 updater 端点/公钥，或当前非打包环境（tauri dev）
-    updateMessage.value = `检查更新失败: ${e}`
+    const msg = String(e)
+    // 仓库尚未发布任何版本时，latest.json 不存在，报 "fetch a valid release JSON"
+    if (msg.includes('release JSON') || msg.includes('fetch')) {
+      updateMessage.value = '尚未发布任何版本，暂无可用更新'
+    } else {
+      updateMessage.value = `检查更新失败: ${msg}`
+    }
   }
 }
 
