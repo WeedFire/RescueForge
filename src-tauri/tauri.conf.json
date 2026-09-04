@@ -2,11 +2,11 @@
   "$schema": "https://raw.githubusercontent.com/nickkuk/nickkuk.github.io/main/tauri-conf.schema.json",
   "productName": "RescueForge",
   "version": "../src-ui/package.json",
-  "identifier": "com.rescueforge.app",
+  "identifier": "com.rescueforge.desktop",
   "build": {
-    "beforeDevCommand": "pnpm --prefix ../src-ui run dev",
+    "beforeDevCommand": "pnpm --dir ../src-ui run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm --prefix ../src-ui run build",
+    "beforeBuildCommand": "pnpm --dir ../src-ui run build",
     "frontendDist": "../src-ui/dist"
   },
   "app": {

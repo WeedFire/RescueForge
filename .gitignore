@@ -21,6 +21,6 @@ src-tauri/target/
 .DS_Store
 Thumbs.db
 /.tauri/
-.codebuddy
 
 /CODEBUDDY.md
+/.codebuddy/

@@ -88,8 +88,12 @@ jobs:
                     + '，已用占位图兜底。正式发布前请提交真实图标：pnpm tauri icon <源图.png>')
           PY
 
+      # 必须在 src-ui 目录内执行：pnpm 从「当前工作目录」向上查找 pnpm-workspace.yaml，
+      # 若在仓库根目录用 `--prefix src-ui`，pnpm 在根目录找不到该文件，
+      # onlyBuiltDependencies 不生效 → ERR_PNPM_IGNORED_BUILDS (esbuild/vue-demi 构建脚本被忽略)。
       - name: Install frontend dependencies
-        run: pnpm install --prefix src-ui
+        run: pnpm install
+        working-directory: src-ui
 
       - name: Build and release (Tauri)
         uses: tauri-apps/tauri-action@v0

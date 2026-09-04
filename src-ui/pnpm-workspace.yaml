@@ -1,0 +1,10 @@
+# pnpm 构建脚本白名单 —— 由 `pnpm approve-builds` 生成，请勿手写改字段名/格式。
+# pnpm 11 使用 allowBuilds（map 格式，值 true = 允许执行安装后脚本）。
+# 踩坑记录：
+#   - 写成 onlyBuiltDependencies（数组）时，`pnpm config get` 能读到值，但安装时不生效，
+#     仍会报 ERR_PNPM_IGNORED_BUILDS。必须以本文件的 allowBuilds map 为准。
+#   - 值必须是 true；若为 false 等于显式禁止，同样会报 ignored builds。
+# esbuild 需 postinstall 就位二进制，vue-demi 需 postinstall 生成 Vue 版本适配层。
+allowBuilds:
+  esbuild: true
+  vue-demi: true
