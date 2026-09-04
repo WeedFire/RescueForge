@@ -109,5 +109,5 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'RescueForge v__VERSION__'
           releaseBody: '自动构建发布。更新内容见提交记录。'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false

@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "core:event:default",
+    "updater:default",
     "allow-select-folder",
     "allow-validate-path",
     "allow-reveal-in-explorer",

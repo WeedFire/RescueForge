@@ -244,3 +244,9 @@ RescueForge/
 ## 📄 许可证
 
 MIT License - 详见 LICENSE 文件
+
+## 打赏作者
+### **创作不易，感谢打赏。你的打赏就是对作者最好的鼓励**
+| | |
+|:-:|:---:|
+| ![1.jpg](src-tauri/icons/1.jpg)| ![2.png](src-tauri/icons/2.png)|

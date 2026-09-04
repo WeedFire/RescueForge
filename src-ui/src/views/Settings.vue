@@ -158,25 +158,15 @@ async function installUpdate() {
         </div>
       </div>
 
-      <!-- 语言 -->
-      <div class="flex items-center justify-between p-4">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-brand-green/10 flex items-center justify-center">
-            <Languages class="w-4 h-4 text-brand-green" />
-          </div>
-          <div>
-            <p class="text-sm font-medium">{{ t('settings.language') }}</p>
-            <p class="text-2xs text-t-muted">{{ settingsStore.settings.language === 'zh-CN' ? '简体中文' : 'English' }}</p>
-          </div>
+      <!-- 语言：目前仅支持简体中文，移除英文选项 -->
+      <div class="flex items-center gap-3 p-4">
+        <div class="w-8 h-8 rounded-lg bg-brand-green/10 flex items-center justify-center">
+          <Languages class="w-4 h-4 text-brand-green" />
         </div>
-        <select
-          :value="settingsStore.settings.language"
-          @change="settingsStore.setLanguage(($event.target as HTMLSelectElement).value)"
-          class="input w-auto text-xs py-1.5 px-2.5"
-        >
-          <option value="zh-CN">简体中文</option>
-          <option value="en-US">English</option>
-        </select>
+        <div>
+          <p class="text-sm font-medium">{{ t('settings.language') }}</p>
+          <p class="text-2xs text-t-muted">简体中文</p>
+        </div>
       </div>
 
       <!-- 默认恢复路径 -->
