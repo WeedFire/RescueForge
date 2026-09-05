@@ -76,12 +76,7 @@ async function checkUpdate() {
   } catch (e) {
     updateState.value = 'error'
     const msg = String(e)
-    // 仓库尚未发布任何版本时，latest.json 不存在，报 "fetch a valid release JSON"
-    if (msg.includes('release JSON') || msg.includes('fetch')) {
-      updateMessage.value = '尚未发布任何版本，暂无可用更新'
-    } else {
-      updateMessage.value = `检查更新失败: ${msg}`
-    }
+    updateMessage.value = `检查更新失败: ${msg}`
   }
 }
 
