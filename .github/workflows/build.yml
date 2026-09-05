@@ -6,7 +6,6 @@ name: Build & Release (Windows)
 # 注意：不再对 push/PR 触发，避免每次提交都产生 draft release。
 on:
   push:
-    branches: [master, main]
     tags: ['v*']
 
 permissions:
@@ -106,8 +105,15 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: v__VERSION__
-          releaseName: 'RescueForge v__VERSION__'
+          # 用 github.ref_name（即触发的 tag，如 v1.1.5）作为 release tag，
+          # 避免 v__VERSION__（package.json 版本）与触发 tag 不一致导致 release 错乱。
+          tagName: ${{ github.ref_name }}
+          releaseName: 'RescueForge ${{ github.ref_name }}'
           releaseBody: '自动构建发布。更新内容见提交记录。'
           releaseDraft: false
           prerelease: false
+          # 显式开启 latest.json 生成与上传（默认即 true，这里明确化）
+          uploadUpdaterJson: true
+          # 同时生成 .msi 和 NSIS .exe 时，latest.json 指向 NSIS .exe
+          # （与用户实际安装的 _x64-setup.exe 一致，避免更新时下载 .msi 却装的是 .exe）
+          updaterJsonPreferNsis: true
