@@ -94,10 +94,21 @@ jobs:
         run: pnpm install
         working-directory: src-ui
 
+      # 关键：GitHub Actions 的 Windows runner 控制台默认非 UTF-8 代码页，
+      # productName 含中文时会被丢弃，产物变成 "_1.1.8_x64-setup.exe"（名称为空）。
+      # 打包前切到 UTF-8 代码页并声明 UTF-8 环境变量。
+      - name: Set UTF-8 encoding (fix Chinese productName)
+        run: chcp 65001
+        shell: cmd
+
       - name: Build and release (Tauri)
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 强制 UTF-8，确保中文 productName 正确写入文件名
+          LANG: C.UTF-8
+          LC_ALL: C.UTF-8
+          PYTHONUTF8: '1'
           # 自动更新签名密钥（Release 构建必需）
           # 生成：cargo tauri signer generate -w ~/.tauri/rescueforge.key
           # 公钥填 tauri.conf.json 的 plugins.updater.pubkey
