@@ -108,7 +108,7 @@ jobs:
           # 用 github.ref_name（即触发的 tag，如 v1.1.5）作为 release tag，
           # 避免 v__VERSION__（package.json 版本）与触发 tag 不一致导致 release 错乱。
           tagName: ${{ github.ref_name }}
-          releaseName: 'RescueForge ${{ github.ref_name }}'
+          releaseName: ${{ github.ref_name }}
           releaseBody: '自动构建发布。更新内容见提交记录。'
           releaseDraft: false
           prerelease: false

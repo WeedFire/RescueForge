@@ -25,7 +25,7 @@ onMounted(async () => {
 <template>
   <footer class="flex items-center justify-between h-7 px-4 bg-app-sidebar border-t border-app-border text-3xs text-t-muted select-none">
     <div class="flex items-center gap-3">
-      <span class="font-semibold text-t-secondary">RescueForge</span>
+      <span class="font-semibold text-t-secondary">数据恢复</span>
       <span class="text-t-muted">v{{ version }}</span>
     </div>
     <div class="flex items-center gap-3">

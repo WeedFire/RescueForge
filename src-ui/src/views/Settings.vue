@@ -124,7 +124,7 @@ async function installUpdate() {
   <div class="p-6 space-y-6 animate-fade-in max-w-[760px]">
     <div>
       <h1 class="text-xl font-semibold tracking-tight">{{ t('settings.title') }}</h1>
-      <p class="text-sm text-t-secondary mt-0.5">自定义 RescueForge 的外观和行为</p>
+      <p class="text-sm text-t-secondary mt-0.5">自定义 数据恢复 的外观和行为</p>
     </div>
 
     <section class="card divide-y divide-app-border">

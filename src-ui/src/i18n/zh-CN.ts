@@ -1,6 +1,6 @@
 export default {
   app: {
-    title: 'RescueForge - 数据恢复工具',
+    title: '数据恢复',
     subtitle: '轻量跨平台数据恢复',
   },
   nav: {

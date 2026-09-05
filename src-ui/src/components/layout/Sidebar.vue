@@ -30,7 +30,7 @@ function isActive(path: string) {
       <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-brand-cyan flex items-center justify-center flex-shrink-0">
         <HardDrive class="w-4 h-4 text-white" />
       </div>
-      <span class="font-bold text-sm tracking-tight whitespace-nowrap">RescueForge</span>
+      <span class="font-bold text-sm tracking-tight whitespace-nowrap">数据恢复</span>
     </div>
 
     <!-- Nav Section -->
