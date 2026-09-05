@@ -68,7 +68,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://github.com/WeedFire/RescueForge/releases/latest/download/latest.json"
+        "https://api.github.com/repos/WeedFire/RescueForge/releases/latest"
       ],
       "dialog": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVENTBFQUY3MTIxNzczMEYKUldRUGN4Y1M5K3BRN1pEdzhldlNVUGkwWFhwRWkvY2pyTUN4SVQ0WkNsV1JEcWxOMFAyaURsdHYK"
