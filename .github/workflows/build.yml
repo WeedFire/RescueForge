@@ -46,11 +46,22 @@ jobs:
       # 且尺寸正确，否则报 `icon ... is not RGBA` 打包失败。
       # 用 PowerShell 原生校验（Windows runner 自带，不依赖 bash/Python heredoc，
       # 避免校验脚本自身成为失败点）。不合格时本地执行：pnpm tauri icon <源图.png>
+      # 此外，若 128x128@2x.png（256x256）尺寸错误，从 128x128.png 自动重采样生成，
+      # 避免一次提交错误就把 CI 打挂（本次遇到 128x128@2x.png IHDR 宽高为 0x0 的损坏文件）。
       - name: Validate icons (must be RGBA)
         shell: pwsh
         run: |
           $targets = @{ '32x32.png' = 32; '128x128.png' = 128; '128x128@2x.png' = 256 }
           $ok = $true
+
+          function Get-PngDims($path) {
+            $b = [System.IO.File]::ReadAllBytes($path)
+            if ($b.Length -lt 26 -or $b[0] -ne 0x89 -or $b[1] -ne 0x50) { return $null }
+            $w = ($b[16] -shl 24) -bor ($b[17] -shl 16) -bor ($b[18] -shl 8) -bor $b[19]
+            $h = ($b[20] -shl 24) -bor ($b[21] -shl 16) -bor ($b[22] -shl 8) -bor $b[23]
+            return @{ W = $w; H = $h; Depth = $b[24]; CType = $b[25] }
+          }
+
           foreach ($name in $targets.Keys) {
             $size = $targets[$name]
             $p = Join-Path 'src-tauri/icons' $name
@@ -59,26 +70,52 @@ jobs:
               $ok = $false
               continue
             }
-            $b = [System.IO.File]::ReadAllBytes($p)
-            if ($b.Length -lt 26 -or $b[0] -ne 0x89 -or $b[1] -ne 0x50) {
+            $info = Get-PngDims $p
+            if ($null -eq $info) {
               Write-Host "::error::$name is not a valid PNG"
               $ok = $false
               continue
             }
-            $w = ($b[16] -shl 24) -bor ($b[17] -shl 16) -bor ($b[18] -shl 8) -bor $b[19]
-            $h = ($b[20] -shl 24) -bor ($b[21] -shl 16) -bor ($b[22] -shl 8) -bor $b[23]
-            $bitdepth = $b[24]
-            $ctype = $b[25]
+            $w = $info.W; $h = $info.H; $ctype = $info.CType; $depth = $info.Depth
+            $bad = $false
             if ($ctype -ne 6) {
               Write-Host "::error::$name colortype=$ctype (expected 6=RGBA). Regenerate: pnpm tauri icon <src.png>"
-              $ok = $false
-            } elseif ($bitdepth -ne 8) {
-              Write-Host "::error::$name bitdepth=$bitdepth (expected 8)"
-              $ok = $false
+              $ok = $false; $bad = $true
+            } elseif ($depth -ne 8) {
+              Write-Host "::error::$name bitdepth=$depth (expected 8)"
+              $ok = $false; $bad = $true
             } elseif ($w -ne $size -or $h -ne $size) {
               Write-Host "::error::$name size=${w}x${h} (expected ${size}x${size})"
-              $ok = $false
-            } else {
+              $ok = $false; $bad = $true
+            }
+            # 仅对 128x128@2x.png（256x256）尝试从 128x128.png 自动修复，
+            # 因为它是 @2x 派生图，从基础尺寸放大无信息损失。
+            if ($bad -and $name -eq '128x128@2x.png' -and (Test-Path 'src-tauri/icons/128x128.png')) {
+              $srcInfo = Get-PngDims 'src-tauri/icons/128x128.png'
+              if ($srcInfo -and $srcInfo.CType -eq 6 -and $srcInfo.Depth -eq 8 -and $srcInfo.W -eq 128) {
+                Add-Type -AssemblyName System.Drawing
+                $src = [System.Drawing.Image]::FromFile((Resolve-Path 'src-tauri/icons/128x128.png'))
+                $bmp = New-Object System.Drawing.Bitmap 256, 256, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+                $g = [System.Drawing.Graphics]::FromImage($bmp)
+                $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+                $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+                $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+                $g.Clear([System.Drawing.Color]::Transparent)
+                $g.DrawImage($src, 0, 0, 256, 256)
+                $g.Dispose(); $src.Dispose()
+                $bmp.Save($p, [System.Drawing.Imaging.ImageFormat]::Png)
+                $bmp.Dispose()
+                $newInfo = Get-PngDims $p
+                if ($newInfo -and $newInfo.CType -eq 6 -and $newInfo.W -eq 256 -and $newInfo.H -eq 256) {
+                  Write-Host "Repaired: 128x128@2x.png regenerated from 128x128.png (256x256 RGBA)"
+                  $ok = $true
+                } else {
+                  Write-Host "::error::failed to repair 128x128@2x.png"
+                }
+              } else {
+                Write-Host "::error::cannot auto-repair 128x128@2x.png: source 128x128.png invalid"
+              }
+            } elseif (-not $bad) {
               Write-Host "OK: $name ${w}x${h} colortype=$ctype (RGBA)"
             }
           }
