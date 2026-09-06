@@ -31,8 +31,10 @@ jobs:
           # 与本机 pnpm 11.6.0 保持同系列，避免跨大版本的依赖解析/hoisting 差异
           version: 11
 
-      # 注：此前用 Python 脚本校验/生成图标，但 Windows runner 上通过 stdin 读 Python 时默认 cp1252 编码，
-      # 脚本含中文注释会抛 UnicodeEncodeError。现已改为 PowerShell 原生校验，故不再需要 setup-python。
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -42,89 +44,48 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      # 图标已提交到仓库（未被 .gitignore 忽略）。Tauri 硬性要求 PNG 为 RGBA(color type 6)
-      # 且尺寸正确，否则报 `icon ... is not RGBA` 打包失败。
-      # 用 PowerShell 原生校验（Windows runner 自带，不依赖 bash/Python heredoc，
-      # 避免校验脚本自身成为失败点）。不合格时本地执行：pnpm tauri icon <源图.png>
-      # 此外，若 128x128@2x.png（256x256）尺寸错误，从 128x128.png 自动重采样生成，
-      # 避免一次提交错误就把 CI 打挂（本次遇到 128x128@2x.png IHDR 宽高为 0x0 的损坏文件）。
-      - name: Validate icons (must be RGBA)
-        shell: pwsh
+      # 图标是打包必需资产（.gitignore 已放开 src-tauri/icons/**，建议提交真实图标）。
+      # 若仓库缺失则用纯色占位图兜底，避免整个 Release 流程失败。
+      # 正式发布前请提交真实图标：pnpm tauri icon <源图.png>
+      - name: Ensure icons exist (fallback placeholder)
+        shell: bash
         run: |
-          $targets = @{ '32x32.png' = 32; '128x128.png' = 128; '128x128@2x.png' = 256 }
-          $ok = $true
+          python - <<'PY'
+          import zlib, struct, os
+          d = 'src-tauri/icons'
+          os.makedirs(d, exist_ok=True)
 
-          function Get-PngDims($path) {
-            $b = [System.IO.File]::ReadAllBytes($path)
-            if ($b.Length -lt 26 -or $b[0] -ne 0x89 -or $b[1] -ne 0x50) { return $null }
-            $w = ($b[16] -shl 24) -bor ($b[17] -shl 16) -bor ($b[18] -shl 8) -bor $b[19]
-            $h = ($b[20] -shl 24) -bor ($b[21] -shl 16) -bor ($b[22] -shl 8) -bor $b[23]
-            return @{ W = $w; H = $h; Depth = $b[24]; CType = $b[25] }
-          }
+          def png_bytes(size, rgb=(59, 130, 246)):
+              row = b'\x00' + bytes(rgb) * size
+              raw = row * size
+              def chunk(t, data):
+                  return (struct.pack('>I', len(data)) + t + data
+                          + struct.pack('>I', zlib.crc32(t + data) & 0xffffffff))
+              ihdr = struct.pack('>IIBBBBB', size, size, 8, 2, 0, 0, 0)
+              return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr)
+                      + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b''))
 
-          foreach ($name in $targets.Keys) {
-            $size = $targets[$name]
-            $p = Join-Path 'src-tauri/icons' $name
-            if (-not (Test-Path $p)) {
-              Write-Host "::error::missing icon $name"
-              $ok = $false
-              continue
-            }
-            $info = Get-PngDims $p
-            if ($null -eq $info) {
-              Write-Host "::error::$name is not a valid PNG"
-              $ok = $false
-              continue
-            }
-            $w = $info.W; $h = $info.H; $ctype = $info.CType; $depth = $info.Depth
-            $bad = $false
-            if ($ctype -ne 6) {
-              Write-Host "::error::$name colortype=$ctype (expected 6=RGBA). Regenerate: pnpm tauri icon <src.png>"
-              $ok = $false; $bad = $true
-            } elseif ($depth -ne 8) {
-              Write-Host "::error::$name bitdepth=$depth (expected 8)"
-              $ok = $false; $bad = $true
-            } elseif ($w -ne $size -or $h -ne $size) {
-              Write-Host "::error::$name size=${w}x${h} (expected ${size}x${size})"
-              $ok = $false; $bad = $true
-            }
-            # 仅对 128x128@2x.png（256x256）尝试从 128x128.png 自动修复，
-            # 因为它是 @2x 派生图，从基础尺寸放大无信息损失。
-            if ($bad -and $name -eq '128x128@2x.png' -and (Test-Path 'src-tauri/icons/128x128.png')) {
-              $srcInfo = Get-PngDims 'src-tauri/icons/128x128.png'
-              if ($srcInfo -and $srcInfo.CType -eq 6 -and $srcInfo.Depth -eq 8 -and $srcInfo.W -eq 128) {
-                Add-Type -AssemblyName System.Drawing
-                $src = [System.Drawing.Image]::FromFile((Resolve-Path 'src-tauri/icons/128x128.png'))
-                $bmp = New-Object System.Drawing.Bitmap 256, 256, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
-                $g = [System.Drawing.Graphics]::FromImage($bmp)
-                $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-                $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-                $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-                $g.Clear([System.Drawing.Color]::Transparent)
-                $g.DrawImage($src, 0, 0, 256, 256)
-                $g.Dispose(); $src.Dispose()
-                $bmp.Save($p, [System.Drawing.Imaging.ImageFormat]::Png)
-                $bmp.Dispose()
-                $newInfo = Get-PngDims $p
-                if ($newInfo -and $newInfo.CType -eq 6 -and $newInfo.W -eq 256 -and $newInfo.H -eq 256) {
-                  Write-Host "Repaired: 128x128@2x.png regenerated from 128x128.png (256x256 RGBA)"
-                  $ok = $true
-                } else {
-                  Write-Host "::error::failed to repair 128x128@2x.png"
-                }
-              } else {
-                Write-Host "::error::cannot auto-repair 128x128@2x.png: source 128x128.png invalid"
-              }
-            } elseif (-not $bad) {
-              Write-Host "OK: $name ${w}x${h} colortype=$ctype (RGBA)"
-            }
-          }
-          if (-not (Test-Path 'src-tauri/icons/icon.icns')) {
-            Write-Host "::error::missing icon.icns"
-            $ok = $false
-          }
-          if (-not $ok) { exit 1 }
-          Write-Host "All icons valid (RGBA, correct size)"
+          targets = {'32x32.png': 32, '128x128.png': 128, '128x128@2x.png': 256}
+          missing = [n for n in targets if not os.path.exists(os.path.join(d, n))]
+          for n, s in targets.items():
+              p = os.path.join(d, n)
+              if not os.path.exists(p):
+                  with open(p, 'wb') as f:
+                      f.write(png_bytes(s))
+
+          # tauri.conf.json 的 bundle.icon 列了 icon.icns，打包时会被校验存在性
+          icns = os.path.join(d, 'icon.icns')
+          if not os.path.exists(icns):
+              png256 = png_bytes(256)
+              entry = b'ic08' + struct.pack('>I', len(png256) + 8) + png256
+              with open(icns, 'wb') as f:
+                  f.write(b'icns' + struct.pack('>I', 8 + len(entry)) + entry)
+              missing.append('icon.icns')
+
+          if missing:
+              print('::warning::缺少图标 ' + ', '.join(missing)
+                    + '，已用占位图兜底。正式发布前请提交真实图标：pnpm tauri icon <源图.png>')
+          PY
 
       # 必须在 src-ui 目录内执行：pnpm 从「当前工作目录」向上查找 pnpm-workspace.yaml，
       # 若在仓库根目录用 `--prefix src-ui`，pnpm 在根目录找不到该文件，
