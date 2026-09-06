@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/nickkuk/nickkuk.github.io/main/tauri-conf.schema.json",
-  "productName": "数据恢复",
+  "productName": "RescueForge",
   "version": "../src-ui/package.json",
   "identifier": "com.rescueforge.desktop",
   "build": {
