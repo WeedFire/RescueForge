@@ -44,75 +44,52 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      # 图标是打包必需资产。Tauri 硬性要求：PNG 必须是 RGBA(color type 6) 且尺寸正确，
-      # 否则报 `icon ... is not RGBA` 直接打包失败。
-      # 这里不仅校验「文件是否存在」，还校验「格式/尺寸是否合格」，不合格一律覆盖生成。
-      # 正式发布前建议提交真实图标：pnpm tauri icon <源图.png>
-      - name: Ensure icons are valid RGBA (regenerate if invalid)
-        shell: bash
+      # 图标已提交到仓库（未被 .gitignore 忽略）。Tauri 硬性要求 PNG 为 RGBA(color type 6)
+      # 且尺寸正确，否则报 `icon ... is not RGBA` 打包失败。
+      # 用 PowerShell 原生校验（Windows runner 自带，不依赖 bash/Python heredoc，
+      # 避免校验脚本自身成为失败点）。不合格时本地执行：pnpm tauri icon <源图.png>
+      - name: Validate icons (must be RGBA)
+        shell: pwsh
         run: |
-          python - <<'PY'
-          import zlib, struct, os
-          d = 'src-tauri/icons'
-          os.makedirs(d, exist_ok=True)
-
-          def write_rgba_png(path, size, rgb=(59, 130, 246), alpha=255):
-              """写 RGBA PNG（color type 6）—— Tauri 硬性要求，RGB(2) 会报 is not RGBA。"""
-              r, g, b = rgb
-              row = b'\x00' + bytes((r, g, b, alpha)) * size
-              raw = row * size
-              def chunk(tag, data):
-                  return (struct.pack('>I', len(data)) + tag + data
-                          + struct.pack('>I', zlib.crc32(tag + data) & 0xffffffff))
-              ihdr = struct.pack('>IIBBBBB', size, size, 8, 6, 0, 0, 0)
-              png = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr)
-                     + chunk(b'IDAT', zlib.compress(raw, 9)) + chunk(b'IEND', b''))
-              with open(path, 'wb') as f:
-                  f.write(png)
-
-          def is_valid_rgba(path, size):
-              """校验是否为指定尺寸的 RGBA PNG。"""
-              try:
-                  with open(path, 'rb') as f:
-                      raw = f.read()
-              except OSError:
-                  return False
-              if len(raw) < 26 or raw[:8] != b'\x89PNG\r\n\x1a\n':
-                  return False
-              w, h = struct.unpack('>II', raw[16:24])
-              bitdepth, ctype = raw[24], raw[25]
-              # color type 6 = RGBA
-              return ctype == 6 and bitdepth == 8 and w == size and h == size
-
-          targets = {'32x32.png': 32, '128x128.png': 128, '128x128@2x.png': 256}
-          fixed = []
-          for name, size in targets.items():
-              p = os.path.join(d, name)
-              if not is_valid_rgba(p, size):
-                  write_rgba_png(p, size)
-                  fixed.append(name)
-
-          # tauri.conf.json 的 bundle.icon 列了 icon.icns，打包时会校验存在性
-          icns = os.path.join(d, 'icon.icns')
-          if not os.path.exists(icns):
-              import io
-              buf = io.BytesIO()
-              # 复用上面的写入逻辑生成到内存
-              tmp = os.path.join(d, '.tmp_256.png')
-              write_rgba_png(tmp, 256)
-              png256 = open(tmp, 'rb').read()
-              os.remove(tmp)
-              entry = b'ic08' + struct.pack('>I', len(png256) + 8) + png256
-              with open(icns, 'wb') as f:
-                  f.write(b'icns' + struct.pack('>I', 8 + len(entry)) + entry)
-              fixed.append('icon.icns')
-
-          if fixed:
-              print('::warning::以下图标缺失或格式不合格(非RGBA/尺寸错)，已重新生成占位图: '
-                    + ', '.join(fixed) + '。正式发布前请提交真实图标: pnpm tauri icon <源图.png>')
-          else:
-              print('图标校验通过(均为 RGBA 且尺寸正确)')
-          PY
+          $targets = @{ '32x32.png' = 32; '128x128.png' = 128; '128x128@2x.png' = 256 }
+          $ok = $true
+          foreach ($name in $targets.Keys) {
+            $size = $targets[$name]
+            $p = Join-Path 'src-tauri/icons' $name
+            if (-not (Test-Path $p)) {
+              Write-Host "::error::missing icon $name"
+              $ok = $false
+              continue
+            }
+            $b = [System.IO.File]::ReadAllBytes($p)
+            if ($b.Length -lt 26 -or $b[0] -ne 0x89 -or $b[1] -ne 0x50) {
+              Write-Host "::error::$name is not a valid PNG"
+              $ok = $false
+              continue
+            }
+            $w = ($b[16] -shl 24) -bor ($b[17] -shl 16) -bor ($b[18] -shl 8) -bor $b[19]
+            $h = ($b[20] -shl 24) -bor ($b[21] -shl 16) -bor ($b[22] -shl 8) -bor $b[23]
+            $bitdepth = $b[24]
+            $ctype = $b[25]
+            if ($ctype -ne 6) {
+              Write-Host "::error::$name colortype=$ctype (expected 6=RGBA). Regenerate: pnpm tauri icon <src.png>"
+              $ok = $false
+            } elseif ($bitdepth -ne 8) {
+              Write-Host "::error::$name bitdepth=$bitdepth (expected 8)"
+              $ok = $false
+            } elseif ($w -ne $size -or $h -ne $size) {
+              Write-Host "::error::$name size=${w}x${h} (expected ${size}x${size})"
+              $ok = $false
+            } else {
+              Write-Host "OK: $name ${w}x${h} colortype=$ctype (RGBA)"
+            }
+          }
+          if (-not (Test-Path 'src-tauri/icons/icon.icns')) {
+            Write-Host "::error::missing icon.icns"
+            $ok = $false
+          }
+          if (-not $ok) { exit 1 }
+          Write-Host "All icons valid (RGBA, correct size)"
 
       # 必须在 src-ui 目录内执行：pnpm 从「当前工作目录」向上查找 pnpm-workspace.yaml，
       # 若在仓库根目录用 `--prefix src-ui`，pnpm 在根目录找不到该文件，
