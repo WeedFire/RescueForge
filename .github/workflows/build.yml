@@ -31,10 +31,8 @@ jobs:
           # 与本机 pnpm 11.6.0 保持同系列，避免跨大版本的依赖解析/hoisting 差异
           version: 11
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      # 注：此前用 Python 脚本校验/生成图标，但 Windows runner 上通过 stdin 读 Python 时默认 cp1252 编码，
+      # 脚本含中文注释会抛 UnicodeEncodeError。现已改为 PowerShell 原生校验，故不再需要 setup-python。
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
