@@ -135,41 +135,50 @@ jobs:
         run: |
           $tag = $env:GITHUB_REF_NAME
           $ver = (Get-Content 'src-ui/package.json' -Raw | ConvertFrom-Json).version
-          $bundleDir = 'src-tauri/target/release/bundle/nsis'
-          $bad = Get-ChildItem $bundleDir -Filter '*x64-setup.exe' | Where-Object { $_.Name -notlike '数据恢复*' } | Select-Object -First 1
-          if ($bad) {
-            $goodName = '数据恢复_' + $ver + '_x64-setup.exe'
-            $good = Join-Path $bad.DirectoryName $goodName
-            Copy-Item $bad.FullName $good -Force
-            Write-Host "Renamed local asset -> $goodName"
-            $badName = $bad.Name
-            # 删除 tauri-action 已上传的无中文名 asset，再传正确中文名
-            gh release delete-asset $tag $badName --yes
-            gh release upload $tag $good --clobber
-            Write-Host "Uploaded $goodName for $tag"
+          $goodName = '数据恢复_' + $ver + '_x64-setup.exe'
 
-            # 修正 latest.json：将其 url 从旧文件名替换为新中文名（latest.json 由
-            # tauri-action 上传，内部 url 指向旧无中文文件名，需同步改）
-            $latestJson = Join-Path $bundleDir '..\..\..\..\..\latest.json'
-            # tauri-action 生成的 latest.json 通常位于仓库根或 target 内，多路径探测
-            $candidates = @(
-              'latest.json',
-              'src-tauri/target/release/bundle/latest.json',
-              'src-tauri/target/release/bundle/nsis/latest.json'
-            )
-            $lj = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-            if ($lj) {
-              $j = Get-Content $lj -Raw | ConvertFrom-Json
-              $url = $j.platforms.'windows-x86_64'.url
-              # url 可能是完整 URL 或相对路径，只替换末尾文件名部分
-              $newUrl = [System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($url), $goodName)
-              # Path.Combine 在 URL 上会把 https:/ 斜杠改反斜杠，手动拼接更稳妥
+          # 递归查找安装包（tauri-action 的 target 路径可能与预期不同）
+          $exe = Get-ChildItem -Path 'src-tauri' -Recurse -Filter '*x64-setup.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) {
+            # 退到整个仓库递归查找
+            $exe = Get-ChildItem -Path '.' -Recurse -Filter '*x64-setup.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          }
+          if (-not $exe) {
+            Write-Host "::warning::no x64-setup.exe found to fix name"
+            exit 0
+          }
+          Write-Host "found installer: $($exe.FullName)"
+
+          # 本地文件名若是中文名（上传时被 tauri-action 抹掉），复制一份规范中文名以便上传
+          $good = Join-Path $exe.DirectoryName $goodName
+          if ($exe.Name -ne $goodName) {
+            Copy-Item $exe.FullName $good -Force
+            Write-Host "renamed local -> $goodName"
+          }
+
+          # 列出当前 release 的 assets，找到需要删除的无中文名 installer
+          $assets = gh release view $tag --json assets --jq '.assets[].name' 2>$null
+          foreach ($a in $assets) {
+            if ($a -like '*x64-setup.exe' -and $a -ne $goodName) {
+              gh release delete-asset $tag $a --yes
+              Write-Host "deleted old asset: $a"
+            }
+          }
+          gh release upload $tag $good --clobber
+          Write-Host "uploaded $goodName"
+
+          # 修正 latest.json 中指向旧文件名的 url
+          $lj = Get-ChildItem -Path '.' -Recurse -Filter 'latest.json' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($lj) {
+            $j = Get-Content $lj.FullName -Raw | ConvertFrom-Json
+            $url = $j.platforms.'windows-x86_64'.url
+            if ($url -and -not $url.EndsWith($goodName)) {
               $newUrl = $url.Substring(0, $url.LastIndexOf('/') + 1) + $goodName
               $j.platforms.'windows-x86_64'.url = $newUrl
-              $j | ConvertTo-Json -Depth 10 | Set-Content $lj -Encoding UTF8
-              gh release upload $tag $lj --clobber
-              Write-Host "Fixed latest.json url -> $newUrl"
+              $j | ConvertTo-Json -Depth 10 | Set-Content $lj.FullName -Encoding UTF8
+              gh release upload $tag $lj.FullName --clobber
+              Write-Host "fixed latest.json url -> $newUrl"
             }
           } else {
-            Write-Host "No installer found to rename (name already correct)"
+            Write-Host "latest.json not found, skip url fix"
           }
